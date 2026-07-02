@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import {
   Car,
@@ -13,6 +14,7 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
+import { analyzeClaim } from "@/lib/claims-analysis.functions";
 
 export const Route = createFileRoute("/claims")({
   head: () => ({
@@ -90,13 +92,14 @@ const initialProperty: PropertyForm = {
 };
 
 const STATUS_MESSAGES = [
+  "Preparing evidence...",
   "Transcribing voice memo...",
   "Analyzing damage via computer vision...",
-  "Checking fraud indicators...",
-  "Generating final decision...",
+  "Checking fraud indicators & generating decision...",
 ];
 
 function ClaimsPage() {
+  const analyze = useServerFn(analyzeClaim);
   const [claimType, setClaimType] = useState<ClaimType>("auto");
   const [autoForm, setAutoForm] = useState<AutoForm>(initialAuto);
   const [propertyForm, setPropertyForm] = useState<PropertyForm>(initialProperty);
@@ -154,6 +157,17 @@ function ClaimsPage() {
     return null;
   };
 
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const s = reader.result as string;
+        resolve(s.includes(",") ? s.split(",")[1] : s);
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
   const runAnalysis = async () => {
     const err = validate();
     if (err) {
@@ -165,71 +179,58 @@ function ClaimsPage() {
     setLoading(true);
     setStatusIdx(0);
 
+    // Advance status messages while the real request runs
+    const statusTimers: number[] = [];
     for (let i = 1; i < STATUS_MESSAGES.length; i++) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((r) => setTimeout(r, 500));
-      setStatusIdx(i);
-    }
-    await new Promise((r) => setTimeout(r, 500));
-
-    const isAuto = claimType === "auto";
-    const repairCost = isAuto
-      ? Math.floor(500 + Math.random() * 14500)
-      : Math.floor(1000 + Math.random() * 29000);
-    const confidence = Math.floor(75 + Math.random() * 21);
-    const value = Number(isAuto ? autoForm.value : propertyForm.value) || 0;
-    const deductible = Number(isAuto ? autoForm.deductible : propertyForm.deductible) || 0;
-    const payout = Math.max(0, Math.min(repairCost - deductible, value));
-
-    let decision: Decision;
-    if (isAuto) {
-      decision = repairCost < 3000 ? "APPROVE" : repairCost <= 8000 ? "ESCALATE" : "DENY";
-    } else {
-      decision = repairCost < 5000 ? "APPROVE" : repairCost <= 15000 ? "ESCALATE" : "DENY";
+      statusTimers.push(
+        window.setTimeout(() => setStatusIdx(i), i * 800),
+      );
     }
 
-    const fraudFlags: string[] = [];
-    if (Math.random() < 0.1) {
-      fraudFlags.push("⚠️ Claim filed 5 days after policy inception");
+    try {
+      const isAuto = claimType === "auto";
+      const form = isAuto ? autoForm : propertyForm;
+
+      // Only send images and audio to keep the payload small
+      const supported = files.filter(
+        (f) => f.type.startsWith("image/") || f.type.startsWith("audio/"),
+      );
+      const payloadFiles = await Promise.all(
+        supported.map(async (f) => ({
+          name: f.name,
+          type: f.type,
+          base64: await fileToBase64(f),
+        })),
+      );
+
+      const res = await analyze({
+        data: {
+          claimType,
+          formData: form as unknown as Record<string, string>,
+          files: payloadFiles,
+        },
+      });
+
+      setResult({
+        decision: res.decision,
+        confidence: res.confidence_score,
+        repairCost: res.repair_cost,
+        payout: res.estimated_payout,
+        reasoning: res.reasoning,
+        fraudFlags: res.flags,
+        nextSteps: res.next_steps,
+      });
+    } catch (e) {
+      console.error(e);
+      setError(
+        e instanceof Error
+          ? `Analysis failed: ${e.message}`
+          : "Analysis failed. Please try again.",
+      );
+    } finally {
+      statusTimers.forEach((t) => window.clearTimeout(t));
+      setLoading(false);
     }
-    if (Math.random() < 0.15) {
-      fraudFlags.push("⚠️ Multiple recent claims from same policyholder");
-    }
-    if (fraudFlags.length === 0) fraudFlags.push("✅ No fraud indicators detected");
-
-    const transcript =
-      "I was driving on Main Street when the other vehicle ran a red light and hit my front bumper.";
-
-    const decisionWord =
-      decision === "APPROVE" ? "approval" : decision === "ESCALATE" ? "escalation" : "denial";
-    const threshold =
-      isAuto
-        ? decision === "APPROVE"
-          ? "$3,000"
-          : "$8,000"
-        : decision === "APPROVE"
-          ? "$5,000"
-          : "$15,000";
-
-    const reasoning = `Voice transcript captured: "${transcript}" The AI-estimated repair cost of $${repairCost.toLocaleString()} was evaluated against the ${threshold} ${isAuto ? "auto" : "property"} triage threshold. Policy coverage and evidence uploads were cross-checked, and ${fraudFlags[0].startsWith("✅") ? "no fraud signals were detected" : "one or more fraud signals were flagged"}. Based on these inputs, the model recommends ${decisionWord} at ${confidence}% confidence.`;
-
-    const nextSteps =
-      decision === "APPROVE"
-        ? "Send policyholder to preferred repair shop and initiate payout."
-        : decision === "ESCALATE"
-          ? "Forward to senior adjuster for manual review within 24 hours."
-          : "Notify policyholder of denial and provide formal appeal instructions.";
-
-    setResult({
-      decision,
-      confidence,
-      repairCost,
-      payout,
-      reasoning,
-      fraudFlags,
-      nextSteps,
-    });
-    setLoading(false);
   };
 
   return (
