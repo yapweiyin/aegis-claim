@@ -99,6 +99,7 @@ const STATUS_MESSAGES = [
 ];
 
 function ClaimsPage() {
+  const analyze = useServerFn(analyzeClaim);
   const [claimType, setClaimType] = useState<ClaimType>("auto");
   const [autoForm, setAutoForm] = useState<AutoForm>(initialAuto);
   const [propertyForm, setPropertyForm] = useState<PropertyForm>(initialProperty);
