@@ -92,10 +92,10 @@ const initialProperty: PropertyForm = {
 };
 
 const STATUS_MESSAGES = [
+  "Preparing evidence...",
   "Transcribing voice memo...",
   "Analyzing damage via computer vision...",
-  "Checking fraud indicators...",
-  "Generating final decision...",
+  "Checking fraud indicators & generating decision...",
 ];
 
 function ClaimsPage() {
