@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import {
   Car,
@@ -13,6 +14,7 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
+import { analyzeClaim } from "@/lib/claims-analysis.functions";
 
 export const Route = createFileRoute("/claims")({
   head: () => ({
