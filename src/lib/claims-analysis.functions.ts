@@ -101,7 +101,11 @@ export const analyzeClaim = createServerFn({ method: "POST" })
             choices?: Array<{ message?: { content?: string } }>;
           };
           const text = j.choices?.[0]?.message?.content ?? "{}";
-          const parsed = JSON.parse(text) as Partial<typeof damage> & Record<string, unknown>;
+          const parsed = JSON.parse(text) as {
+            cost?: number;
+            severity?: string;
+            confidence?: number;
+          };
           if (parsed && typeof parsed.cost === "number") {
             damage = {
               cost: Math.round(parsed.cost),
