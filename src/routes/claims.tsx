@@ -347,16 +347,17 @@ function ClaimsPage() {
                   Drag & drop files here, or click to browse
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  JPG, PNG, PDF, MP3, WAV · up to 10 files
+                  JPG/PNG (max 5MB) · MP3/WAV/M4A (max 10MB) · up to 10 files
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept="image/jpeg,image/png,application/pdf,audio/mpeg,audio/wav,audio/*"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png,audio/mpeg,audio/wav,audio/mp4,.mp3,.wav,.m4a"
                   className="hidden"
                   onChange={(e) => handleFiles(e.target.files)}
                 />
+
               </div>
 
               {previews.length > 0 && (
