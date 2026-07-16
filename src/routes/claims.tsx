@@ -205,13 +205,24 @@ function ClaimsPage() {
     setError(null);
     setResult(null);
     setLoading(true);
-    setStatusIdx(0);
 
-    // Advance status messages while the real request runs
+    const hasAudio = files.some((f) => classifyFile(f) === "audio");
+    const hasImages = files.some((f) => classifyFile(f) === "image");
+    const steps: { label: string; done: boolean }[] = [];
+    if (hasAudio) steps.push({ label: "Transcribing audio…", done: false });
+    if (hasImages) steps.push({ label: "Analyzing images…", done: false });
+    steps.push({ label: "Generating decision…", done: false });
+    setProgress(steps);
+
+    // Advance progress while the real request runs
     const statusTimers: number[] = [];
-    for (let i = 1; i < STATUS_MESSAGES.length; i++) {
+    for (let i = 0; i < steps.length - 1; i++) {
       statusTimers.push(
-        window.setTimeout(() => setStatusIdx(i), i * 800),
+        window.setTimeout(() => {
+          setProgress((prev) =>
+            prev.map((s, idx) => (idx <= i ? { ...s, done: true } : s)),
+          );
+        }, (i + 1) * 1200),
       );
     }
 
@@ -219,10 +230,7 @@ function ClaimsPage() {
       const isAuto = claimType === "auto";
       const form = isAuto ? autoForm : propertyForm;
 
-      // Only send images and audio to keep the payload small
-      const supported = files.filter(
-        (f) => f.type.startsWith("image/") || f.type.startsWith("audio/"),
-      );
+      const supported = files.filter((f) => classifyFile(f) !== null);
       const payloadFiles = await Promise.all(
         supported.map(async (f) => ({
           name: f.name,
@@ -248,6 +256,7 @@ function ClaimsPage() {
         fraudFlags: res.flags,
         nextSteps: res.next_steps,
       });
+      setProgress([]);
     } catch (e) {
       console.error(e);
       setError(
@@ -255,6 +264,7 @@ function ClaimsPage() {
           ? `Analysis failed: ${e.message}`
           : "Analysis failed. Please try again.",
       );
+      setProgress([]);
     } finally {
       statusTimers.forEach((t) => window.clearTimeout(t));
       setLoading(false);
