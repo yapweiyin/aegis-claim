@@ -111,7 +111,7 @@ function ClaimsPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [statusIdx, setStatusIdx] = useState(0);
+  const [progress, setProgress] = useState<{ label: string; done: boolean }[]>([]);
   const [result, setResult] = useState<ClaimResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -129,15 +129,27 @@ function ClaimsPage() {
 
   const handleFiles = (list: FileList | null) => {
     if (!list) return;
-    const incoming = Array.from(list).filter((f) => {
-      const ok =
-        f.type.startsWith("image/") ||
-        f.type === "application/pdf" ||
-        f.type.startsWith("audio/") ||
-        /\.(mp3|wav|pdf|jpe?g|png)$/i.test(f.name);
-      return ok;
-    });
-    setFiles((prev) => [...prev, ...incoming].slice(0, 10));
+    const accepted: File[] = [];
+    for (const f of Array.from(list)) {
+      const kind = classifyFile(f);
+      if (!kind) {
+        setError("Unsupported file type. Please upload JPG/PNG images or MP3/WAV/M4A audio.");
+        continue;
+      }
+      if (kind === "image" && f.size > MAX_IMAGE_BYTES) {
+        setError("Please upload an image under 5MB or an audio file under 10MB.");
+        continue;
+      }
+      if (kind === "audio" && f.size > MAX_AUDIO_BYTES) {
+        setError("Please upload an image under 5MB or an audio file under 10MB.");
+        continue;
+      }
+      accepted.push(f);
+    }
+    if (accepted.length > 0) {
+      setError(null);
+      setFiles((prev) => [...prev, ...accepted].slice(0, 10));
+    }
   };
 
   const onDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -148,6 +160,17 @@ function ClaimsPage() {
 
   const removeFile = (i: number) =>
     setFiles((prev) => prev.filter((_, idx) => idx !== i));
+
+  const clearAll = () => {
+    setClaimType("auto");
+    setAutoForm(initialAuto);
+    setPropertyForm(initialProperty);
+    setFiles([]);
+    setResult(null);
+    setError(null);
+    setProgress([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const validate = (): string | null => {
     if (claimType === "auto") {
