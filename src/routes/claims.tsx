@@ -399,24 +399,57 @@ function ClaimsPage() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={runAnalysis}
-                disabled={loading}
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-4 py-3 text-base font-semibold text-white shadow transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    {STATUS_MESSAGES[statusIdx]}
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="h-5 w-5" />
-                    Run AI Claim Analysis
-                  </>
-                )}
-              </button>
+              {progress.length > 0 && (
+                <ul className="mt-4 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+                  {progress.map((s, i) => {
+                    const isActive = !s.done && progress.slice(0, i).every((p) => p.done);
+                    return (
+                      <li key={s.label} className="flex items-center gap-2">
+                        {s.done ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        ) : isActive ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-[#2563eb]" />
+                        ) : (
+                          <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
+                        )}
+                        <span className={s.done ? "text-slate-500 line-through" : "text-slate-700"}>
+                          {s.label}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={runAnalysis}
+                  disabled={loading}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-4 py-3 text-base font-semibold text-white shadow transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Analyzing…
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="h-5 w-5" />
+                      Run AI Claim Analysis
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  disabled={loading}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 sm:w-40"
+                >
+                  <X className="h-5 w-5" />
+                  Clear All
+                </button>
+              </div>
             </div>
 
             {/* Results */}
