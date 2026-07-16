@@ -91,12 +91,17 @@ const initialProperty: PropertyForm = {
   deductible: "1000",
 };
 
-const STATUS_MESSAGES = [
-  "Preparing evidence...",
-  "Transcribing voice memo...",
-  "Analyzing damage via computer vision...",
-  "Checking fraud indicators & generating decision...",
-];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
+const ALLOWED_AUDIO_TYPES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav", "audio/mp4", "audio/x-m4a", "audio/m4a"];
+
+function classifyFile(f: File): "image" | "audio" | null {
+  const name = f.name.toLowerCase();
+  if (ALLOWED_IMAGE_TYPES.includes(f.type) || /\.(jpe?g|png)$/i.test(name)) return "image";
+  if (ALLOWED_AUDIO_TYPES.includes(f.type) || /\.(mp3|wav|m4a)$/i.test(name)) return "audio";
+  return null;
+}
 
 function ClaimsPage() {
   const analyze = useServerFn(analyzeClaim);
