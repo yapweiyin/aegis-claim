@@ -202,6 +202,11 @@ function ClaimsPage() {
       setError(err);
       return;
     }
+    const validFiles = files.filter((f) => classifyFile(f) !== null);
+    if (validFiles.length === 0) {
+      setError("Please upload at least one image or an audio memo before running analysis.");
+      return;
+    }
     setError(null);
     setResult(null);
     setLoading(true);
