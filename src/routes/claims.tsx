@@ -91,12 +91,17 @@ const initialProperty: PropertyForm = {
   deductible: "1000",
 };
 
-const STATUS_MESSAGES = [
-  "Preparing evidence...",
-  "Transcribing voice memo...",
-  "Analyzing damage via computer vision...",
-  "Checking fraud indicators & generating decision...",
-];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
+const ALLOWED_AUDIO_TYPES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav", "audio/mp4", "audio/x-m4a", "audio/m4a"];
+
+function classifyFile(f: File): "image" | "audio" | null {
+  const name = f.name.toLowerCase();
+  if (ALLOWED_IMAGE_TYPES.includes(f.type) || /\.(jpe?g|png)$/i.test(name)) return "image";
+  if (ALLOWED_AUDIO_TYPES.includes(f.type) || /\.(mp3|wav|m4a)$/i.test(name)) return "audio";
+  return null;
+}
 
 function ClaimsPage() {
   const analyze = useServerFn(analyzeClaim);
@@ -106,7 +111,7 @@ function ClaimsPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [statusIdx, setStatusIdx] = useState(0);
+  const [progress, setProgress] = useState<{ label: string; done: boolean }[]>([]);
   const [result, setResult] = useState<ClaimResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -124,15 +129,27 @@ function ClaimsPage() {
 
   const handleFiles = (list: FileList | null) => {
     if (!list) return;
-    const incoming = Array.from(list).filter((f) => {
-      const ok =
-        f.type.startsWith("image/") ||
-        f.type === "application/pdf" ||
-        f.type.startsWith("audio/") ||
-        /\.(mp3|wav|pdf|jpe?g|png)$/i.test(f.name);
-      return ok;
-    });
-    setFiles((prev) => [...prev, ...incoming].slice(0, 10));
+    const accepted: File[] = [];
+    for (const f of Array.from(list)) {
+      const kind = classifyFile(f);
+      if (!kind) {
+        setError("Unsupported file type. Please upload JPG/PNG images or MP3/WAV/M4A audio.");
+        continue;
+      }
+      if (kind === "image" && f.size > MAX_IMAGE_BYTES) {
+        setError("Please upload an image under 5MB or an audio file under 10MB.");
+        continue;
+      }
+      if (kind === "audio" && f.size > MAX_AUDIO_BYTES) {
+        setError("Please upload an image under 5MB or an audio file under 10MB.");
+        continue;
+      }
+      accepted.push(f);
+    }
+    if (accepted.length > 0) {
+      setError(null);
+      setFiles((prev) => [...prev, ...accepted].slice(0, 10));
+    }
   };
 
   const onDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -143,6 +160,17 @@ function ClaimsPage() {
 
   const removeFile = (i: number) =>
     setFiles((prev) => prev.filter((_, idx) => idx !== i));
+
+  const clearAll = () => {
+    setClaimType("auto");
+    setAutoForm(initialAuto);
+    setPropertyForm(initialProperty);
+    setFiles([]);
+    setResult(null);
+    setError(null);
+    setProgress([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const validate = (): string | null => {
     if (claimType === "auto") {
@@ -177,13 +205,24 @@ function ClaimsPage() {
     setError(null);
     setResult(null);
     setLoading(true);
-    setStatusIdx(0);
 
-    // Advance status messages while the real request runs
+    const hasAudio = files.some((f) => classifyFile(f) === "audio");
+    const hasImages = files.some((f) => classifyFile(f) === "image");
+    const steps: { label: string; done: boolean }[] = [];
+    if (hasAudio) steps.push({ label: "Transcribing audio…", done: false });
+    if (hasImages) steps.push({ label: "Analyzing images…", done: false });
+    steps.push({ label: "Generating decision…", done: false });
+    setProgress(steps);
+
+    // Advance progress while the real request runs
     const statusTimers: number[] = [];
-    for (let i = 1; i < STATUS_MESSAGES.length; i++) {
+    for (let i = 0; i < steps.length - 1; i++) {
       statusTimers.push(
-        window.setTimeout(() => setStatusIdx(i), i * 800),
+        window.setTimeout(() => {
+          setProgress((prev) =>
+            prev.map((s, idx) => (idx <= i ? { ...s, done: true } : s)),
+          );
+        }, (i + 1) * 1200),
       );
     }
 
@@ -191,10 +230,7 @@ function ClaimsPage() {
       const isAuto = claimType === "auto";
       const form = isAuto ? autoForm : propertyForm;
 
-      // Only send images and audio to keep the payload small
-      const supported = files.filter(
-        (f) => f.type.startsWith("image/") || f.type.startsWith("audio/"),
-      );
+      const supported = files.filter((f) => classifyFile(f) !== null);
       const payloadFiles = await Promise.all(
         supported.map(async (f) => ({
           name: f.name,
@@ -220,6 +256,7 @@ function ClaimsPage() {
         fraudFlags: res.flags,
         nextSteps: res.next_steps,
       });
+      setProgress([]);
     } catch (e) {
       console.error(e);
       setError(
@@ -227,6 +264,7 @@ function ClaimsPage() {
           ? `Analysis failed: ${e.message}`
           : "Analysis failed. Please try again.",
       );
+      setProgress([]);
     } finally {
       statusTimers.forEach((t) => window.clearTimeout(t));
       setLoading(false);
@@ -309,16 +347,17 @@ function ClaimsPage() {
                   Drag & drop files here, or click to browse
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  JPG, PNG, PDF, MP3, WAV · up to 10 files
+                  JPG/PNG (max 5MB) · MP3/WAV/M4A (max 10MB) · up to 10 files
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept="image/jpeg,image/png,application/pdf,audio/mpeg,audio/wav,audio/*"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png,audio/mpeg,audio/wav,audio/mp4,.mp3,.wav,.m4a"
                   className="hidden"
                   onChange={(e) => handleFiles(e.target.files)}
                 />
+
               </div>
 
               {previews.length > 0 && (
@@ -361,24 +400,57 @@ function ClaimsPage() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={runAnalysis}
-                disabled={loading}
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-4 py-3 text-base font-semibold text-white shadow transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    {STATUS_MESSAGES[statusIdx]}
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="h-5 w-5" />
-                    Run AI Claim Analysis
-                  </>
-                )}
-              </button>
+              {progress.length > 0 && (
+                <ul className="mt-4 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+                  {progress.map((s, i) => {
+                    const isActive = !s.done && progress.slice(0, i).every((p) => p.done);
+                    return (
+                      <li key={s.label} className="flex items-center gap-2">
+                        {s.done ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        ) : isActive ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-[#2563eb]" />
+                        ) : (
+                          <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
+                        )}
+                        <span className={s.done ? "text-slate-500 line-through" : "text-slate-700"}>
+                          {s.label}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={runAnalysis}
+                  disabled={loading}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-4 py-3 text-base font-semibold text-white shadow transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Analyzing…
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="h-5 w-5" />
+                      Run AI Claim Analysis
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  disabled={loading}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 sm:w-40"
+                >
+                  <X className="h-5 w-5" />
+                  Clear All
+                </button>
+              </div>
             </div>
 
             {/* Results */}
