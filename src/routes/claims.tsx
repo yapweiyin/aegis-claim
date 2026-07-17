@@ -306,7 +306,7 @@ function ClaimsPage() {
         },
       });
 
-      setResult({
+      const newResult: ClaimResult = {
         decision: res.decision,
         confidence: res.confidence_score,
         repairCost: res.repair_cost,
@@ -314,7 +314,18 @@ function ClaimsPage() {
         reasoning: res.reasoning,
         fraudFlags: res.flags,
         nextSteps: res.next_steps,
-      });
+      };
+      setResult(newResult);
+      const entry: ClaimHistoryEntry = {
+        id:
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        date: new Date().toISOString(),
+        claimType,
+        result: newResult,
+      };
+      saveHistory([entry, ...history].slice(0, 50));
       setProgress([]);
     } catch (e) {
       console.error(e);
