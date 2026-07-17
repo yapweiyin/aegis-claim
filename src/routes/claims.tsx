@@ -133,6 +133,41 @@ function ClaimsPage() {
   const [progress, setProgress] = useState<{ label: string; done: boolean }[]>([]);
   const [result, setResult] = useState<ClaimResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<ClaimHistoryEntry[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      if (raw) setHistory(JSON.parse(raw) as ClaimHistoryEntry[]);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const saveHistory = (next: ClaimHistoryEntry[]) => {
+    setHistory(next);
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const clearHistory = () => {
+    if (typeof window !== "undefined" && !window.confirm("Delete all saved claims? This cannot be undone.")) {
+      return;
+    }
+    saveHistory([]);
+  };
+
+  const viewHistoryItem = (entry: ClaimHistoryEntry) => {
+    setResult(entry.result);
+    setError(null);
+    setProgress([]);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const previews = useMemo(
