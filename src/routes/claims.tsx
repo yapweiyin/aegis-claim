@@ -223,6 +223,7 @@ function ClaimsPage() {
     setPropertyForm(initialProperty);
     setFiles([]);
     setResult(null);
+    setViewedId(null);
     setError(null);
     setProgress([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
