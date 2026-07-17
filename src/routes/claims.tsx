@@ -528,6 +528,81 @@ function ClaimsPage() {
           </section>
         </div>
 
+        {/* Claims History */}
+        <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+              <ClipboardList className="h-5 w-5 text-[#2563eb]" />
+              📋 My Claims
+              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                {history.length}
+              </span>
+            </h2>
+            {history.length > 0 && (
+              <button
+                type="button"
+                onClick={clearHistory}
+                className="flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Clear History
+              </button>
+            )}
+          </div>
+
+          {history.length === 0 ? (
+            <p className="py-6 text-center text-sm text-slate-500">
+              No claims yet. Run an analysis to see it saved here.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                    <th className="py-2 pr-4 font-medium">Date</th>
+                    <th className="py-2 pr-4 font-medium">Type</th>
+                    <th className="py-2 pr-4 font-medium">Status</th>
+                    <th className="py-2 pr-4 font-medium">Payout</th>
+                    <th className="py-2 pr-4 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((h) => {
+                    const s = decisionStatus(h.result.decision);
+                    return (
+                      <tr key={h.id} className="border-b border-slate-100 last:border-0">
+                        <td className="py-3 pr-4 text-slate-700">
+                          {new Date(h.date).toLocaleString()}
+                        </td>
+                        <td className="py-3 pr-4 capitalize text-slate-700">{h.claimType}</td>
+                        <td className="py-3 pr-4">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${s.cls}`}>
+                            {s.label}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 font-medium text-slate-900">
+                          ${Math.round(h.result.payout).toLocaleString()}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <button
+                            type="button"
+                            onClick={() => viewHistoryItem(h)}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+
         <p className="mt-10 text-center text-xs text-slate-500">
           Aegis Claims · Prototype · Decisions are AI-generated and require human sign-off for final
           approval.
