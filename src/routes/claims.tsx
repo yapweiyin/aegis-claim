@@ -134,6 +134,7 @@ function ClaimsPage() {
   const [result, setResult] = useState<ClaimResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<ClaimHistoryEntry[]>([]);
+  const [viewedId, setViewedId] = useState<string | null>(null);
 
   useEffect(() => {
     try {
