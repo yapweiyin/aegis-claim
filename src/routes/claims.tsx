@@ -163,6 +163,7 @@ function ClaimsPage() {
 
   const viewHistoryItem = (entry: ClaimHistoryEntry) => {
     setResult(entry.result);
+    setViewedId(entry.id);
     setError(null);
     setProgress([]);
     if (typeof window !== "undefined") {
