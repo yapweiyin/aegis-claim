@@ -13,6 +13,9 @@ import {
   AlertTriangle,
   XCircle,
   Loader2,
+  Eye,
+  Trash2,
+  ClipboardList,
 } from "lucide-react";
 import { analyzeClaim } from "@/lib/claims-analysis.functions";
 
