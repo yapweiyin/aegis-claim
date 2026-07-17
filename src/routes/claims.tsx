@@ -134,6 +134,7 @@ function ClaimsPage() {
   const [result, setResult] = useState<ClaimResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<ClaimHistoryEntry[]>([]);
+  const [viewedId, setViewedId] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -162,6 +163,7 @@ function ClaimsPage() {
 
   const viewHistoryItem = (entry: ClaimHistoryEntry) => {
     setResult(entry.result);
+    setViewedId(entry.id);
     setError(null);
     setProgress([]);
     if (typeof window !== "undefined") {
@@ -221,6 +223,7 @@ function ClaimsPage() {
     setPropertyForm(initialProperty);
     setFiles([]);
     setResult(null);
+    setViewedId(null);
     setError(null);
     setProgress([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -325,6 +328,7 @@ function ClaimsPage() {
         claimType,
         result: newResult,
       };
+      setViewedId(null);
       saveHistory([entry, ...history].slice(0, 50));
       setProgress([]);
     } catch (e) {
@@ -524,7 +528,7 @@ function ClaimsPage() {
             </div>
 
             {/* Results */}
-            {result && <ResultsPanel result={result} />}
+            {result && <ResultsPanel result={result} viewedId={viewedId} />}
           </section>
         </div>
 
@@ -739,7 +743,7 @@ function PropertyFields({
   );
 }
 
-function ResultsPanel({ result }: { result: ClaimResult }) {
+function ResultsPanel({ result, viewedId }: { result: ClaimResult; viewedId?: string | null }) {
   const badge =
     result.decision === "APPROVE"
       ? {
@@ -759,8 +763,15 @@ function ResultsPanel({ result }: { result: ClaimResult }) {
             label: "DENY",
           };
 
+  const shortId = viewedId ? viewedId.replace(/-/g, "").slice(0, 6).toUpperCase() : null;
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      {shortId && (
+        <h3 className="mb-4 text-base font-semibold text-slate-900">
+          Claim #{shortId} – Details
+        </h3>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span
           className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold ${badge.cls}`}
