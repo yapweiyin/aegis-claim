@@ -328,6 +328,7 @@ function ClaimsPage() {
         claimType,
         result: newResult,
       };
+      setViewedId(null);
       saveHistory([entry, ...history].slice(0, 50));
       setProgress([]);
     } catch (e) {
