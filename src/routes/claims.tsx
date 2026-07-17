@@ -528,7 +528,7 @@ function ClaimsPage() {
             </div>
 
             {/* Results */}
-            {result && <ResultsPanel result={result} />}
+            {result && <ResultsPanel result={result} viewedId={viewedId} />}
           </section>
         </div>
 
