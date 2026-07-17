@@ -73,6 +73,22 @@ interface ClaimResult {
   nextSteps: string;
 }
 
+interface ClaimHistoryEntry {
+  id: string;
+  date: string; // ISO
+  claimType: ClaimType;
+  result: ClaimResult;
+}
+
+const HISTORY_KEY = "aegis.claims.history.v1";
+
+function decisionStatus(d: Decision): { label: string; cls: string } {
+  if (d === "APPROVE") return { label: "Approved", cls: "bg-emerald-100 text-emerald-700" };
+  if (d === "DENY") return { label: "Denied", cls: "bg-red-100 text-red-700" };
+  return { label: "Pending", cls: "bg-amber-100 text-amber-700" };
+}
+
+
 const initialAuto: AutoForm = {
   vin: "",
   make: "",
