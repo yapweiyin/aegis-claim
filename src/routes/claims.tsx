@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import {
@@ -616,6 +616,13 @@ function ClaimsPage() {
           Aegis Claims · Prototype · Decisions are AI-generated and require human sign-off for final
           approval.
         </p>
+
+        <footer className="mt-6 border-t border-slate-200 pt-4 text-center text-xs text-slate-500">
+          © 2026 Aegis Claims. All rights reserved. |{" "}
+          <Link to="/legal" className="font-medium text-blue-600 hover:text-blue-700 hover:underline">
+            Legal & Privacy Policy
+          </Link>
+        </footer>
       </div>
     </div>
   );
