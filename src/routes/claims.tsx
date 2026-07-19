@@ -16,8 +16,10 @@ import {
   Eye,
   Trash2,
   ClipboardList,
+  Download,
 } from "lucide-react";
 import { analyzeClaim } from "@/lib/claims-analysis.functions";
+
 
 export const Route = createFileRoute("/claims")({
   head: () => ({
@@ -347,18 +349,18 @@ function ClaimsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+      <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-10 lg:px-8">
+        <header className="mb-6 sm:mb-8">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Aegis Claims – Instant Triage
           </h1>
-          <p className="mt-2 text-base text-slate-600">
+          <p className="mt-2 text-sm text-slate-600 sm:text-base">
             AI-powered auto and property claims assessment. Upload evidence and get a decision in seconds.
           </p>
         </header>
 
         {/* Toggle */}
-        <div className="mb-8 inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+        <div className="mb-6 inline-flex w-full max-w-sm rounded-lg border border-slate-200 bg-white p-1 shadow-sm sm:mb-8 sm:w-auto">
           {(["auto", "property"] as ClaimType[]).map((t) => {
             const active = claimType === t;
             const Icon = t === "auto" ? Car : Home;
@@ -367,7 +369,7 @@ function ClaimsPage() {
                 key={t}
                 type="button"
                 onClick={() => setClaimType(t)}
-                className={`flex items-center gap-2 rounded-md px-5 py-2 text-sm font-medium transition-colors ${
+                className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-md px-5 py-2 text-sm font-medium transition-colors sm:flex-none ${
                   active
                     ? "bg-[#2563eb] text-white shadow"
                     : "text-slate-600 hover:text-slate-900"
@@ -380,10 +382,10 @@ function ClaimsPage() {
           })}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-5">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-5">
           {/* Left column: form (~40%) */}
           <section className="lg:col-span-2">
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
               <h2 className="mb-4 text-lg font-semibold text-slate-900">
                 {claimType === "auto" ? "Vehicle & Incident Details" : "Property & Damage Details"}
               </h2>
@@ -397,8 +399,9 @@ function ClaimsPage() {
           </section>
 
           {/* Right column: upload + results */}
-          <section className="space-y-6 lg:col-span-3">
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="space-y-4 sm:space-y-6 lg:col-span-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+
               <label className="mb-3 block text-sm font-semibold text-slate-900">
                 Upload Evidence (Photos, Police Report, Voice Memo)
               </label>
@@ -410,10 +413,10 @@ function ClaimsPage() {
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={onDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+                className={`flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:min-h-[180px] sm:p-8 ${
                   isDragging
                     ? "border-[#2563eb] bg-blue-50"
-                    : "border-slate-300 bg-slate-50 hover:bg-slate-100"
+                    : "border-slate-300 bg-slate-50 hover:bg-slate-100 active:bg-slate-100"
                 }`}
               >
                 <Upload className="mb-2 h-8 w-8 text-slate-400" />
@@ -501,7 +504,7 @@ function ClaimsPage() {
                   type="button"
                   onClick={runAnalysis}
                   disabled={loading}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-4 py-3 text-base font-semibold text-white shadow transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-4 py-3 text-base font-semibold text-white shadow transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {loading ? (
                     <>
@@ -519,7 +522,7 @@ function ClaimsPage() {
                   type="button"
                   onClick={clearAll}
                   disabled={loading}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 sm:w-40"
+                  className="flex min-h-[48px] items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 sm:w-40"
                 >
                   <X className="h-5 w-5" />
                   Clear All
@@ -528,12 +531,14 @@ function ClaimsPage() {
             </div>
 
             {/* Results */}
-            {result && <ResultsPanel result={result} viewedId={viewedId} />}
+            {result && <ResultsPanel result={result} viewedId={viewedId} claimType={claimType} />}
           </section>
         </div>
 
+
         {/* Claims History */}
-        <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:mt-8 sm:p-6">
+
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
               <ClipboardList className="h-5 w-5 text-[#2563eb]" />
@@ -743,7 +748,18 @@ function PropertyFields({
   );
 }
 
-function ResultsPanel({ result, viewedId }: { result: ClaimResult; viewedId?: string | null }) {
+function ResultsPanel({
+  result,
+  viewedId,
+  claimType,
+}: {
+  result: ClaimResult;
+  viewedId?: string | null;
+  claimType: ClaimType;
+}) {
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
   const badge =
     result.decision === "APPROVE"
       ? {
@@ -763,70 +779,161 @@ function ResultsPanel({ result, viewedId }: { result: ClaimResult; viewedId?: st
             label: "DENY",
           };
 
-  const shortId = viewedId ? viewedId.replace(/-/g, "").slice(0, 6).toUpperCase() : null;
+  const shortId = viewedId
+    ? viewedId.replace(/-/g, "").slice(0, 6).toUpperCase()
+    : (typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}`
+      )
+        .replace(/-/g, "")
+        .slice(0, 6)
+        .toUpperCase();
+
+  const downloadPdf = async () => {
+    if (!reportRef.current) return;
+    setDownloading(true);
+    try {
+      const mod = await import("html2pdf.js");
+      const html2pdf = (mod as { default: (el?: HTMLElement) => unknown }).default;
+      await (
+        html2pdf() as {
+          set: (o: unknown) => {
+            from: (el: HTMLElement) => { save: () => Promise<void> };
+          };
+        }
+      )
+        .set({
+          margin: [0.4, 0.4, 0.4, 0.4],
+          filename: `aegis-claim-${shortId}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+          jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+        })
+        .from(reportRef.current)
+        .save();
+    } catch (e) {
+      console.error("PDF export failed", e);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      {shortId && (
-        <h3 className="mb-4 text-base font-semibold text-slate-900">
-          Claim #{shortId} – Details
-        </h3>
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span
-          className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold ${badge.cls}`}
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {viewedId ? (
+          <h3 className="text-base font-semibold text-slate-900">
+            Claim #{shortId} – Details
+          </h3>
+        ) : (
+          <span />
+        )}
+        <button
+          type="button"
+          onClick={downloadPdf}
+          disabled={downloading}
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 self-start rounded-md border border-[#2563eb] bg-white px-4 py-2 text-sm font-semibold text-[#2563eb] shadow-sm transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-70 sm:self-auto"
         >
-          {badge.icon}
-          {result.decision === "APPROVE" ? "✅ " : result.decision === "ESCALATE" ? "⚠️ " : "❌ "}
-          {badge.label}
-        </span>
-        <div className="text-right">
-          <div className="text-xs uppercase tracking-wide text-slate-500">Estimated Payout</div>
-          <div className="text-2xl font-bold text-slate-900">
-            ${result.payout.toLocaleString()}
+          {downloading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          Download PDF Report
+        </button>
+      </div>
+
+      <div ref={reportRef} className="min-w-[320px] bg-white p-2 text-slate-900">
+        {/* PDF header — Aegis branding */}
+        <div className="mb-5 flex items-center justify-between border-b-2 border-[#2563eb] pb-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#2563eb] text-lg font-bold text-white">
+              A
+            </div>
+            <div>
+              <div className="text-lg font-bold text-[#2563eb]">Aegis Claims</div>
+              <div className="text-xs text-slate-500">Instant Triage Report</div>
+            </div>
+          </div>
+          <div className="text-right text-xs text-slate-600">
+            <div>
+              <span className="font-semibold">Claim ID:</span> #{shortId}
+            </div>
+            <div>
+              <span className="font-semibold">Date:</span> {new Date().toLocaleString()}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="mt-5">
-        <div className="mb-1 flex items-center justify-between text-xs font-medium text-slate-600">
-          <span>Confidence Score</span>
-          <span>{result.confidence}%</span>
+        {/* Claim details */}
+        <div className="mb-5 grid grid-cols-2 gap-3 text-sm">
+          <InfoBox label="Claim Type">{claimType === "auto" ? "Auto" : "Property"}</InfoBox>
+          <InfoBox label="Policy Number">POL-{shortId}</InfoBox>
+          <InfoBox label="Incident Date">{new Date().toLocaleDateString()}</InfoBox>
+          <InfoBox label="Report Generated">{new Date().toLocaleDateString()}</InfoBox>
         </div>
-        <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full bg-[#2563eb] transition-all"
-            style={{ width: `${result.confidence}%` }}
-          />
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold ${badge.cls}`}
+          >
+            {badge.icon}
+            {result.decision === "APPROVE" ? "✅ " : result.decision === "ESCALATE" ? "⚠️ " : "❌ "}
+            {badge.label}
+          </span>
+          <div className="text-right">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Estimated Payout</div>
+            <div className="text-2xl font-bold text-slate-900">
+              ${result.payout.toLocaleString()}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <InfoBox label="Repair Cost Estimate">${result.repairCost.toLocaleString()}</InfoBox>
-        <InfoBox label="Estimated Payout">${result.payout.toLocaleString()}</InfoBox>
-      </div>
+        <div className="mt-5">
+          <div className="mb-1 flex items-center justify-between text-xs font-medium text-slate-600">
+            <span>Confidence Score</span>
+            <span>{result.confidence}%</span>
+          </div>
+          <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-[#2563eb] transition-all"
+              style={{ width: `${result.confidence}%` }}
+            />
+          </div>
+        </div>
 
-      <div className="mt-5">
-        <h3 className="text-sm font-semibold text-slate-900">Reasoning</h3>
-        <p className="mt-1 text-sm leading-relaxed text-slate-700">{result.reasoning}</p>
-      </div>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <InfoBox label="Repair Cost Estimate">${result.repairCost.toLocaleString()}</InfoBox>
+          <InfoBox label="Estimated Payout">${result.payout.toLocaleString()}</InfoBox>
+        </div>
 
-      <div className="mt-5">
-        <h3 className="text-sm font-semibold text-slate-900">Fraud Flags</h3>
-        <ul className="mt-1 space-y-1 text-sm text-slate-700">
-          {result.fraudFlags.map((f, i) => (
-            <li key={i}>{f}</li>
-          ))}
-        </ul>
-      </div>
+        <div className="mt-5">
+          <h3 className="text-sm font-semibold text-slate-900">Reasoning</h3>
+          <p className="mt-1 text-sm leading-relaxed text-slate-700">{result.reasoning}</p>
+        </div>
 
-      <div className="mt-5 rounded-md border border-blue-100 bg-blue-50 p-4">
-        <h3 className="text-sm font-semibold text-blue-900">Next Steps</h3>
-        <p className="mt-1 text-sm text-blue-800">{result.nextSteps}</p>
+        <div className="mt-5">
+          <h3 className="text-sm font-semibold text-slate-900">Risk / Fraud Flags</h3>
+          <ul className="mt-1 space-y-1 text-sm text-slate-700">
+            {result.fraudFlags.map((f, i) => (
+              <li key={i}>{f}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-5 rounded-md border border-blue-100 bg-blue-50 p-4">
+          <h3 className="text-sm font-semibold text-blue-900">Next Steps</h3>
+          <p className="mt-1 text-sm text-blue-800">{result.nextSteps}</p>
+        </div>
+
+        <p className="mt-6 border-t border-slate-200 pt-3 text-center text-[11px] italic text-slate-500">
+          AI-generated decision – subject to review. © Aegis Claims Prototype.
+        </p>
       </div>
     </div>
   );
 }
+
 
 function InfoBox({ label, children }: { label: string; children: React.ReactNode }) {
   return (
