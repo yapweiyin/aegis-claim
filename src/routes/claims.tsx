@@ -16,8 +16,10 @@ import {
   Eye,
   Trash2,
   ClipboardList,
+  Download,
 } from "lucide-react";
 import { analyzeClaim } from "@/lib/claims-analysis.functions";
+
 
 export const Route = createFileRoute("/claims")({
   head: () => ({
