@@ -504,7 +504,7 @@ function ClaimsPage() {
                   type="button"
                   onClick={runAnalysis}
                   disabled={loading}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-4 py-3 text-base font-semibold text-white shadow transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-4 py-3 text-base font-semibold text-white shadow transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {loading ? (
                     <>
@@ -522,7 +522,7 @@ function ClaimsPage() {
                   type="button"
                   onClick={clearAll}
                   disabled={loading}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 sm:w-40"
+                  className="flex min-h-[48px] items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 sm:w-40"
                 >
                   <X className="h-5 w-5" />
                   Clear All
@@ -531,9 +531,10 @@ function ClaimsPage() {
             </div>
 
             {/* Results */}
-            {result && <ResultsPanel result={result} viewedId={viewedId} />}
+            {result && <ResultsPanel result={result} viewedId={viewedId} claimType={claimType} />}
           </section>
         </div>
+
 
         {/* Claims History */}
         <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
