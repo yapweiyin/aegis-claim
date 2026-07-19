@@ -349,18 +349,18 @@ function ClaimsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+      <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-10 lg:px-8">
+        <header className="mb-6 sm:mb-8">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Aegis Claims – Instant Triage
           </h1>
-          <p className="mt-2 text-base text-slate-600">
+          <p className="mt-2 text-sm text-slate-600 sm:text-base">
             AI-powered auto and property claims assessment. Upload evidence and get a decision in seconds.
           </p>
         </header>
 
         {/* Toggle */}
-        <div className="mb-8 inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+        <div className="mb-6 inline-flex w-full max-w-sm rounded-lg border border-slate-200 bg-white p-1 shadow-sm sm:mb-8 sm:w-auto">
           {(["auto", "property"] as ClaimType[]).map((t) => {
             const active = claimType === t;
             const Icon = t === "auto" ? Car : Home;
@@ -369,7 +369,7 @@ function ClaimsPage() {
                 key={t}
                 type="button"
                 onClick={() => setClaimType(t)}
-                className={`flex items-center gap-2 rounded-md px-5 py-2 text-sm font-medium transition-colors ${
+                className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-md px-5 py-2 text-sm font-medium transition-colors sm:flex-none ${
                   active
                     ? "bg-[#2563eb] text-white shadow"
                     : "text-slate-600 hover:text-slate-900"
@@ -382,10 +382,10 @@ function ClaimsPage() {
           })}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-5">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-5">
           {/* Left column: form (~40%) */}
           <section className="lg:col-span-2">
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
               <h2 className="mb-4 text-lg font-semibold text-slate-900">
                 {claimType === "auto" ? "Vehicle & Incident Details" : "Property & Damage Details"}
               </h2>
@@ -399,8 +399,9 @@ function ClaimsPage() {
           </section>
 
           {/* Right column: upload + results */}
-          <section className="space-y-6 lg:col-span-3">
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="space-y-4 sm:space-y-6 lg:col-span-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+
               <label className="mb-3 block text-sm font-semibold text-slate-900">
                 Upload Evidence (Photos, Police Report, Voice Memo)
               </label>
