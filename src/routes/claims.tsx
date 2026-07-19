@@ -413,10 +413,10 @@ function ClaimsPage() {
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={onDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+                className={`flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:min-h-[180px] sm:p-8 ${
                   isDragging
                     ? "border-[#2563eb] bg-blue-50"
-                    : "border-slate-300 bg-slate-50 hover:bg-slate-100"
+                    : "border-slate-300 bg-slate-50 hover:bg-slate-100 active:bg-slate-100"
                 }`}
               >
                 <Upload className="mb-2 h-8 w-8 text-slate-400" />
