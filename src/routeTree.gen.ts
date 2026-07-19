@@ -9,9 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LegalRouteImport } from './routes/legal'
 import { Route as ClaimsRouteImport } from './routes/claims'
 import { Route as IndexRouteImport } from './routes/index'
 
+const LegalRoute = LegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClaimsRoute = ClaimsRouteImport.update({
   id: '/claims',
   path: '/claims',
@@ -26,31 +32,42 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/claims': typeof ClaimsRoute
+  '/legal': typeof LegalRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/claims': typeof ClaimsRoute
+  '/legal': typeof LegalRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/claims': typeof ClaimsRoute
+  '/legal': typeof LegalRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/claims'
+  fullPaths: '/' | '/claims' | '/legal'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/claims'
-  id: '__root__' | '/' | '/claims'
+  to: '/' | '/claims' | '/legal'
+  id: '__root__' | '/' | '/claims' | '/legal'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClaimsRoute: typeof ClaimsRoute
+  LegalRoute: typeof LegalRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/legal': {
+      id: '/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof LegalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/claims': {
       id: '/claims'
       path: '/claims'
@@ -71,6 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClaimsRoute: ClaimsRoute,
+  LegalRoute: LegalRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
