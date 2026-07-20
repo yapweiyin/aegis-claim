@@ -157,7 +157,7 @@ export const analyzeClaim = createServerFn({ method: "POST" })
     // --- Rate limit (per-IP, per-isolate) ---
     let ip = "unknown";
     try {
-      const headers = getRequestHeaders();
+      const headers = getRequestHeaders() as unknown as Record<string, string | undefined>;
       ip =
         headers["cf-connecting-ip"] ||
         headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
