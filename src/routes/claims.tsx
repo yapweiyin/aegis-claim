@@ -592,7 +592,10 @@ function ClaimsPage() {
                 </thead>
                 <tbody>
                   {history.map((h) => {
-                    const s = decisionStatus(h.result.decision);
+                    const adminStatus = (h as unknown as { status?: string }).status;
+                    const s = adminStatus
+                      ? { label: adminStatus, cls: "bg-slate-100 text-slate-700" }
+                      : decisionStatus(h.result.decision);
                     return (
                       <tr key={h.id} className="border-b border-slate-100 last:border-0">
                         <td className="py-3 pr-4 text-slate-700">
