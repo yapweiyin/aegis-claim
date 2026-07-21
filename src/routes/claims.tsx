@@ -321,7 +321,10 @@ function ClaimsPage() {
         nextSteps: res.next_steps,
       };
       setResult(newResult);
-      const entry: ClaimHistoryEntry = {
+      const entry: ClaimHistoryEntry & {
+        formData?: Record<string, string>;
+        fileNames?: string[];
+      } = {
         id:
           typeof crypto !== "undefined" && "randomUUID" in crypto
             ? crypto.randomUUID()
@@ -329,6 +332,10 @@ function ClaimsPage() {
         date: new Date().toISOString(),
         claimType,
         result: newResult,
+        formData: claimType === "auto"
+          ? (autoForm as unknown as Record<string, string>)
+          : (propertyForm as unknown as Record<string, string>),
+        fileNames: files.map((f) => f.name),
       };
       setViewedId(null);
       saveHistory([entry, ...history].slice(0, 50));
