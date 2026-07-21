@@ -321,7 +321,10 @@ function ClaimsPage() {
         nextSteps: res.next_steps,
       };
       setResult(newResult);
-      const entry: ClaimHistoryEntry = {
+      const entry: ClaimHistoryEntry & {
+        formData?: Record<string, string>;
+        fileNames?: string[];
+      } = {
         id:
           typeof crypto !== "undefined" && "randomUUID" in crypto
             ? crypto.randomUUID()
@@ -329,6 +332,10 @@ function ClaimsPage() {
         date: new Date().toISOString(),
         claimType,
         result: newResult,
+        formData: claimType === "auto"
+          ? (autoForm as unknown as Record<string, string>)
+          : (propertyForm as unknown as Record<string, string>),
+        fileNames: files.map((f) => f.name),
       };
       setViewedId(null);
       saveHistory([entry, ...history].slice(0, 50));
@@ -350,13 +357,21 @@ function ClaimsPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-10 lg:px-8">
-        <header className="mb-6 sm:mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Aegis Claims – Instant Triage
-          </h1>
-          <p className="mt-2 text-sm text-slate-600 sm:text-base">
-            AI-powered auto and property claims assessment. Upload evidence and get a decision in seconds.
-          </p>
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-3 sm:mb-8">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              Aegis Claims – Instant Triage
+            </h1>
+            <p className="mt-2 text-sm text-slate-600 sm:text-base">
+              AI-powered auto and property claims assessment. Upload evidence and get a decision in seconds.
+            </p>
+          </div>
+          <Link
+            to="/admin"
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Admin
+          </Link>
         </header>
 
         {/* Toggle */}
@@ -577,7 +592,10 @@ function ClaimsPage() {
                 </thead>
                 <tbody>
                   {history.map((h) => {
-                    const s = decisionStatus(h.result.decision);
+                    const adminStatus = (h as unknown as { status?: string }).status;
+                    const s = adminStatus
+                      ? { label: adminStatus, cls: "bg-slate-100 text-slate-700" }
+                      : decisionStatus(h.result.decision);
                     return (
                       <tr key={h.id} className="border-b border-slate-100 last:border-0">
                         <td className="py-3 pr-4 text-slate-700">
