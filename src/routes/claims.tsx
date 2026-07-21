@@ -357,13 +357,21 @@ function ClaimsPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-10 lg:px-8">
-        <header className="mb-6 sm:mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Aegis Claims – Instant Triage
-          </h1>
-          <p className="mt-2 text-sm text-slate-600 sm:text-base">
-            AI-powered auto and property claims assessment. Upload evidence and get a decision in seconds.
-          </p>
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-3 sm:mb-8">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              Aegis Claims – Instant Triage
+            </h1>
+            <p className="mt-2 text-sm text-slate-600 sm:text-base">
+              AI-powered auto and property claims assessment. Upload evidence and get a decision in seconds.
+            </p>
+          </div>
+          <Link
+            to="/admin"
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Admin
+          </Link>
         </header>
 
         {/* Toggle */}
