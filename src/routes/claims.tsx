@@ -1106,3 +1106,162 @@ function InfoBox({ label, children }: { label: string; children: React.ReactNode
     </div>
   );
 }
+
+const DOC_STATUS_META: Record<string, string> = {
+  Pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  Received: "bg-blue-100 text-blue-800 border-blue-200",
+  Reviewed: "bg-emerald-100 text-emerald-800 border-emerald-200",
+};
+
+function ClaimDocsSection({
+  claim,
+  onUpload,
+  uploading,
+  error,
+}: {
+  claim: StoredClaim;
+  onUpload: (files: FileList | null) => void;
+  uploading: boolean;
+  error: string | null;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<DocRecord | null>(null);
+  const requests = claim.documentRequests ?? [];
+  const docs = claim.documents ?? [];
+
+  return (
+    <div className="mt-6 rounded-xl border border-orange-200 bg-orange-50/40 p-4 sm:p-6">
+      <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-900">
+        <Inbox className="h-5 w-5 text-orange-600" />
+        Document Requests for Claim #{claim.id.slice(-6).toUpperCase()}
+      </h3>
+
+      {requests.length > 0 ? (
+        <ul className="mb-4 space-y-2">
+          {requests.map((r) => (
+            <li
+              key={r.id}
+              className="rounded-md border border-orange-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <div className="font-medium text-slate-900">{r.message}</div>
+              <div className="text-xs text-slate-500">
+                Requested {new Date(r.requestedDate).toLocaleString()}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mb-4 text-sm text-slate-600">No open requests.</p>
+      )}
+
+      <div className="rounded-lg border-2 border-dashed border-orange-300 bg-white p-4 text-center">
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            onUpload(e.target.files);
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:opacity-60"
+        >
+          <Upload className="h-4 w-4" />
+          {uploading ? "Uploading…" : "Upload Documents"}
+        </button>
+        <p className="mt-2 text-xs text-slate-500">
+          JPG, PNG, WebP or PDF · up to 5MB each (browser storage limit)
+        </p>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      </div>
+
+      {docs.length > 0 && (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[560px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <th className="py-2 pr-4 font-medium">Name</th>
+                <th className="py-2 pr-4 font-medium">Type</th>
+                <th className="py-2 pr-4 font-medium">Uploaded</th>
+                <th className="py-2 pr-4 font-medium">Status</th>
+                <th className="py-2 pr-4 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {docs.map((d) => (
+                <tr key={d.id} className="border-b border-slate-100 last:border-0">
+                  <td className="py-2 pr-4 text-slate-700">
+                    {d.fileType === "image" ? "🖼️" : "📄"} {d.fileName}
+                  </td>
+                  <td className="py-2 pr-4 capitalize text-slate-700">{d.fileType}</td>
+                  <td className="py-2 pr-4 text-slate-700">
+                    {new Date(d.uploadDate).toLocaleString()}
+                  </td>
+                  <td className="py-2 pr-4">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
+                        DOC_STATUS_META[d.status] ?? "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {d.status}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-4">
+                    <button
+                      type="button"
+                      onClick={() => setPreview(d)}
+                      className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      <Eye className="h-3.5 w-3.5" /> Preview
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+              <div className="truncate text-sm font-medium text-slate-900">{preview.fileName}</div>
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="rounded p-1 text-slate-500 hover:bg-slate-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-[80vh] overflow-auto bg-slate-50 p-3">
+              {preview.fileType === "image" ? (
+                <img src={preview.contentBase64} alt={preview.fileName} className="mx-auto max-h-[75vh]" />
+              ) : (
+                <iframe
+                  title={preview.fileName}
+                  src={preview.contentBase64}
+                  className="h-[75vh] w-full rounded border border-slate-200 bg-white"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
