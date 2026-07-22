@@ -695,15 +695,20 @@ function ClaimsPage() {
                     <th className="py-2 pr-4 font-medium">Type</th>
                     <th className="py-2 pr-4 font-medium">Status</th>
                     <th className="py-2 pr-4 font-medium">Payout</th>
+                    <th className="py-2 pr-4 font-medium">Docs</th>
                     <th className="py-2 pr-4 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.map((h) => {
-                    const adminStatus = (h as unknown as { status?: string }).status;
-                    const s = adminStatus
-                      ? { label: adminStatus, cls: "bg-slate-100 text-slate-700" }
-                      : decisionStatus(h.result.decision);
+                    const adminStatus = h.status;
+                    const isReq = adminStatus === "Request Info";
+                    const s = isReq
+                      ? { label: "Request Info", cls: "bg-orange-100 text-orange-700" }
+                      : adminStatus
+                        ? { label: adminStatus, cls: "bg-slate-100 text-slate-700" }
+                        : decisionStatus(h.result.decision);
+                    const docCount = (h.documents ?? []).length;
                     return (
                       <tr key={h.id} className="border-b border-slate-100 last:border-0">
                         <td className="py-3 pr-4 text-slate-700">
@@ -718,14 +723,28 @@ function ClaimsPage() {
                         <td className="py-3 pr-4 font-medium text-slate-900">
                           ${Math.round(h.result.payout).toLocaleString()}
                         </td>
+                        <td className="py-3 pr-4 text-slate-700">
+                          {docCount > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-xs">
+                              <Paperclip className="h-3 w-3" />
+                              {docCount}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </td>
                         <td className="py-3 pr-4">
                           <button
                             type="button"
                             onClick={() => viewHistoryItem(h)}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                            className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm ${
+                              isReq
+                                ? "border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                            }`}
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            View
+                            {isReq ? "Upload Docs" : "View"}
                           </button>
                         </td>
                       </tr>
