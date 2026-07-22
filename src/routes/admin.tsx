@@ -276,7 +276,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 </thead>
                 <tbody>
                   {filtered.map((c) => {
-                    const s = c.status ?? defaultStatusFromDecision(c.result.decision);
+                    const s = asStatus(c.status, defaultStatusFromDecision(c.result.decision));
                     const meta = STATUS_META[s];
                     return (
                       <tr key={c.id} className="border-b border-slate-100 last:border-0">
