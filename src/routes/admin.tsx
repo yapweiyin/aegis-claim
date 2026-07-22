@@ -358,9 +358,63 @@ function ClaimDetail({
   const [status, setStatus] = useState<Status>(currentStatus);
   const [notes, setNotes] = useState(claim.notes ?? "");
   const [saved, setSaved] = useState(false);
+  const [requestMsg, setRequestMsg] = useState("");
+  const [previewDoc, setPreviewDoc] = useState<DocRecord | null>(null);
+  const [reviewNotesById, setReviewNotesById] = useState<Record<string, string>>({});
 
   const allowedNext = NEXT_STATUSES[currentStatus];
   const statusOptions = Array.from(new Set([currentStatus, ...allowedNext]));
+
+  function saveClaim(next: ClaimEntry) {
+    onSave(next);
+  }
+
+  function requestDocuments() {
+    const msg = requestMsg.trim();
+    if (!msg) return;
+    const req: DocRequest = {
+      id: uid("req"),
+      message: msg,
+      requestedBy: "admin",
+      requestedDate: new Date().toISOString(),
+    };
+    const next = pushStatusHistory(
+      {
+        ...claim,
+        documentRequests: [...(claim.documentRequests ?? []), req],
+      },
+      "Request Info",
+      `Requested: ${msg}`,
+    );
+    saveClaim(next);
+    setRequestMsg("");
+    setStatus(asStatus(next.status, currentStatus));
+  }
+
+  function markDocReceived(docId: string) {
+    const docs = (claim.documents ?? []).map((d) =>
+      d.id === docId ? { ...d, status: "Received" as const } : d,
+    );
+    const next = pushStatusHistory({ ...claim, documents: docs }, "Under Review", "Document received.");
+    saveClaim(next);
+    setStatus(asStatus(next.status, currentStatus));
+  }
+
+  function markDocReviewed(docId: string) {
+    const note = reviewNotesById[docId] ?? "";
+    const docs = (claim.documents ?? []).map((d) =>
+      d.id === docId
+        ? {
+            ...d,
+            status: "Reviewed" as const,
+            reviewedBy: "admin",
+            reviewDate: new Date().toISOString(),
+            reviewNotes: note || null,
+          }
+        : d,
+    );
+    saveClaim({ ...claim, documents: docs });
+  }
 
   function handleSave() {
     const history = claim.statusHistory ?? [
