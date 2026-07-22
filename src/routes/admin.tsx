@@ -52,6 +52,7 @@ const ADMIN_PASSWORD = "admin123";
 const STATUSES = [
   "New",
   "Under Review",
+  "Request Info",
   "Approved",
   "Denied",
   "Paid",
@@ -62,6 +63,7 @@ type Status = (typeof STATUSES)[number];
 const STATUS_META: Record<Status, { emoji: string; cls: string }> = {
   New: { emoji: "🟡", cls: "bg-yellow-100 text-yellow-800 border-yellow-200" },
   "Under Review": { emoji: "🔵", cls: "bg-blue-100 text-blue-800 border-blue-200" },
+  "Request Info": { emoji: "🟠", cls: "bg-orange-100 text-orange-800 border-orange-200" },
   Approved: { emoji: "🟢", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
   Denied: { emoji: "🔴", cls: "bg-red-100 text-red-800 border-red-200" },
   Paid: { emoji: "🟣", cls: "bg-purple-100 text-purple-800 border-purple-200" },
@@ -74,25 +76,7 @@ interface StatusLog {
   note?: string;
 }
 
-interface ClaimEntry {
-  id: string;
-  date: string;
-  claimType: "auto" | "property";
-  result: {
-    decision: "APPROVE" | "ESCALATE" | "DENY";
-    confidence: number;
-    repairCost: number;
-    payout: number;
-    reasoning: string;
-    fraudFlags: string[];
-    nextSteps: string;
-  };
-  formData?: Record<string, string>;
-  fileNames?: string[];
-  status?: Status;
-  notes?: string;
-  statusHistory?: StatusLog[];
-}
+type ClaimEntry = StoredClaim;
 
 function defaultStatusFromDecision(d: ClaimEntry["result"]["decision"]): Status {
   if (d === "APPROVE") return "Approved";
@@ -101,18 +85,11 @@ function defaultStatusFromDecision(d: ClaimEntry["result"]["decision"]): Status 
 }
 
 function readHistory(): ClaimEntry[] {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as ClaimEntry[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return readClaims();
 }
 
 function writeHistory(items: ClaimEntry[]) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
+  writeClaims(items);
 }
 
 function AdminPage() {
