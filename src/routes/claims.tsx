@@ -17,8 +17,22 @@ import {
   Trash2,
   ClipboardList,
   Download,
+  Paperclip,
+  Inbox,
 } from "lucide-react";
 import { analyzeClaim } from "@/lib/claims-analysis.functions";
+import {
+  readClaims,
+  writeClaims,
+  updateClaim as updateClaimStore,
+  uid,
+  fileToDataUrl,
+  pushStatusHistory,
+  DOC_ALLOWED_TYPES,
+  DOC_MAX_BYTES,
+  type StoredClaim,
+  type DocRecord,
+} from "@/lib/claim-docs";
 
 
 export const Route = createFileRoute("/claims")({
@@ -75,14 +89,8 @@ interface ClaimResult {
   nextSteps: string;
 }
 
-interface ClaimHistoryEntry {
-  id: string;
-  date: string; // ISO
-  claimType: ClaimType;
-  result: ClaimResult;
-}
+type ClaimHistoryEntry = StoredClaim;
 
-const HISTORY_KEY = "aegis.claims.history.v1";
 
 function decisionStatus(d: Decision): { label: string; cls: string } {
   if (d === "APPROVE") return { label: "Approved", cls: "bg-emerald-100 text-emerald-700" };
@@ -139,18 +147,18 @@ function ClaimsPage() {
   const [viewedId, setViewedId] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(HISTORY_KEY);
-      if (raw) setHistory(JSON.parse(raw) as ClaimHistoryEntry[]);
-    } catch {
-      /* ignore */
-    }
+    setHistory(readClaims());
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === "aegis.claims.history.v1") setHistory(readClaims());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const saveHistory = (next: ClaimHistoryEntry[]) => {
     setHistory(next);
     try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      writeClaims(next);
     } catch {
       /* ignore */
     }
@@ -173,6 +181,68 @@ function ClaimsPage() {
     }
   };
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const pendingRequests = useMemo(
+    () => history.filter((c) => c.status === "Request Info"),
+    [history],
+  );
+  const viewedClaim = useMemo(
+    () => (viewedId ? history.find((c) => c.id === viewedId) ?? null : null),
+    [history, viewedId],
+  );
+
+  const [docUploadError, setDocUploadError] = useState<string | null>(null);
+  const [docUploading, setDocUploading] = useState(false);
+
+  async function uploadDocsToClaim(claimId: string, list: FileList | null) {
+    if (!list || list.length === 0) return;
+    setDocUploadError(null);
+    setDocUploading(true);
+    try {
+      const newDocs: DocRecord[] = [];
+      for (const f of Array.from(list)) {
+        if (!DOC_ALLOWED_TYPES.includes(f.type)) {
+          setDocUploadError(`Unsupported file type: ${f.name}. Use JPG/PNG/WebP or PDF.`);
+          continue;
+        }
+        if (f.size > 10 * 1024 * 1024) {
+          setDocUploadError(`${f.name} exceeds 10MB.`);
+          continue;
+        }
+        if (f.size > DOC_MAX_BYTES) {
+          setDocUploadError(
+            `${f.name} exceeds 5MB storage limit for browser storage. Please compress the file.`,
+          );
+          continue;
+        }
+        const dataUrl = await fileToDataUrl(f);
+        newDocs.push({
+          id: uid("doc"),
+          claimId,
+          fileName: f.name,
+          fileType: f.type.startsWith("image/") ? "image" : "pdf",
+          contentType: f.type,
+          fileSize: f.size,
+          contentBase64: dataUrl,
+          uploadDate: new Date().toISOString(),
+          status: "Pending",
+        });
+      }
+      if (newDocs.length > 0) {
+        const updated = updateClaimStore(claimId, (c) =>
+          pushStatusHistory(
+            { ...c, documents: [...(c.documents ?? []), ...newDocs] },
+            "Under Review",
+            `User uploaded ${newDocs.length} document(s).`,
+          ),
+        );
+        setHistory(updated);
+      }
+    } finally {
+      setDocUploading(false);
+    }
+  }
+
 
   const previews = useMemo(
     () =>
@@ -366,13 +436,51 @@ function ClaimsPage() {
               AI-powered auto and property claims assessment. Upload evidence and get a decision in seconds.
             </p>
           </div>
-          <Link
-            to="/admin"
-            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            Admin
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {pendingRequests.length > 0 && (
+              <a
+                href="#doc-requests"
+                className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-medium text-orange-700 shadow-sm hover:bg-orange-100"
+              >
+                📋 Document Requests
+                <span className="rounded-full bg-orange-200 px-1.5 text-xs font-semibold text-orange-900">
+                  {pendingRequests.length}
+                </span>
+              </a>
+            )}
+            <Link
+              to="/admin"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Admin
+            </Link>
+          </div>
         </header>
+
+        {pendingRequests.length > 0 && (
+          <div
+            id="doc-requests"
+            className="mb-6 flex flex-col gap-2 rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              📋 <span className="font-semibold">Additional information requested</span> for{" "}
+              {pendingRequests.map((c, i) => (
+                <span key={c.id}>
+                  {i > 0 && ", "}
+                  <button
+                    type="button"
+                    onClick={() => viewHistoryItem(c)}
+                    className="font-semibold underline hover:text-orange-700"
+                  >
+                    Claim #{c.id.slice(-6).toUpperCase()}
+                  </button>
+                </span>
+              ))}
+              . Please scroll to that claim and upload the required documents.
+            </div>
+          </div>
+        )}
+
 
         {/* Toggle */}
         <div className="mb-6 inline-flex w-full max-w-sm rounded-lg border border-slate-200 bg-white p-1 shadow-sm sm:mb-8 sm:w-auto">
@@ -547,8 +655,19 @@ function ClaimsPage() {
 
             {/* Results */}
             {result && <ResultsPanel result={result} viewedId={viewedId} claimType={claimType} />}
+
+            {viewedClaim && ((viewedClaim.documentRequests?.length ?? 0) > 0 || (viewedClaim.documents?.length ?? 0) > 0) && (
+              <ClaimDocsSection
+                claim={viewedClaim}
+                onUpload={(files) => uploadDocsToClaim(viewedClaim.id, files)}
+                uploading={docUploading}
+                error={docUploadError}
+              />
+            )}
           </section>
         </div>
+
+
 
 
         {/* Claims History */}
@@ -587,15 +706,20 @@ function ClaimsPage() {
                     <th className="py-2 pr-4 font-medium">Type</th>
                     <th className="py-2 pr-4 font-medium">Status</th>
                     <th className="py-2 pr-4 font-medium">Payout</th>
+                    <th className="py-2 pr-4 font-medium">Docs</th>
                     <th className="py-2 pr-4 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.map((h) => {
-                    const adminStatus = (h as unknown as { status?: string }).status;
-                    const s = adminStatus
-                      ? { label: adminStatus, cls: "bg-slate-100 text-slate-700" }
-                      : decisionStatus(h.result.decision);
+                    const adminStatus = h.status;
+                    const isReq = adminStatus === "Request Info";
+                    const s = isReq
+                      ? { label: "Request Info", cls: "bg-orange-100 text-orange-700" }
+                      : adminStatus
+                        ? { label: adminStatus, cls: "bg-slate-100 text-slate-700" }
+                        : decisionStatus(h.result.decision);
+                    const docCount = (h.documents ?? []).length;
                     return (
                       <tr key={h.id} className="border-b border-slate-100 last:border-0">
                         <td className="py-3 pr-4 text-slate-700">
@@ -610,14 +734,28 @@ function ClaimsPage() {
                         <td className="py-3 pr-4 font-medium text-slate-900">
                           ${Math.round(h.result.payout).toLocaleString()}
                         </td>
+                        <td className="py-3 pr-4 text-slate-700">
+                          {docCount > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-xs">
+                              <Paperclip className="h-3 w-3" />
+                              {docCount}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </td>
                         <td className="py-3 pr-4">
                           <button
                             type="button"
                             onClick={() => viewHistoryItem(h)}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                            className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm ${
+                              isReq
+                                ? "border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                            }`}
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            View
+                            {isReq ? "Upload Docs" : "View"}
                           </button>
                         </td>
                       </tr>
@@ -968,3 +1106,162 @@ function InfoBox({ label, children }: { label: string; children: React.ReactNode
     </div>
   );
 }
+
+const DOC_STATUS_META: Record<string, string> = {
+  Pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  Received: "bg-blue-100 text-blue-800 border-blue-200",
+  Reviewed: "bg-emerald-100 text-emerald-800 border-emerald-200",
+};
+
+function ClaimDocsSection({
+  claim,
+  onUpload,
+  uploading,
+  error,
+}: {
+  claim: StoredClaim;
+  onUpload: (files: FileList | null) => void;
+  uploading: boolean;
+  error: string | null;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<DocRecord | null>(null);
+  const requests = claim.documentRequests ?? [];
+  const docs = claim.documents ?? [];
+
+  return (
+    <div className="mt-6 rounded-xl border border-orange-200 bg-orange-50/40 p-4 sm:p-6">
+      <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-900">
+        <Inbox className="h-5 w-5 text-orange-600" />
+        Document Requests for Claim #{claim.id.slice(-6).toUpperCase()}
+      </h3>
+
+      {requests.length > 0 ? (
+        <ul className="mb-4 space-y-2">
+          {requests.map((r) => (
+            <li
+              key={r.id}
+              className="rounded-md border border-orange-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <div className="font-medium text-slate-900">{r.message}</div>
+              <div className="text-xs text-slate-500">
+                Requested {new Date(r.requestedDate).toLocaleString()}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mb-4 text-sm text-slate-600">No open requests.</p>
+      )}
+
+      <div className="rounded-lg border-2 border-dashed border-orange-300 bg-white p-4 text-center">
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            onUpload(e.target.files);
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:opacity-60"
+        >
+          <Upload className="h-4 w-4" />
+          {uploading ? "Uploading…" : "Upload Documents"}
+        </button>
+        <p className="mt-2 text-xs text-slate-500">
+          JPG, PNG, WebP or PDF · up to 5MB each (browser storage limit)
+        </p>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      </div>
+
+      {docs.length > 0 && (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[560px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <th className="py-2 pr-4 font-medium">Name</th>
+                <th className="py-2 pr-4 font-medium">Type</th>
+                <th className="py-2 pr-4 font-medium">Uploaded</th>
+                <th className="py-2 pr-4 font-medium">Status</th>
+                <th className="py-2 pr-4 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {docs.map((d) => (
+                <tr key={d.id} className="border-b border-slate-100 last:border-0">
+                  <td className="py-2 pr-4 text-slate-700">
+                    {d.fileType === "image" ? "🖼️" : "📄"} {d.fileName}
+                  </td>
+                  <td className="py-2 pr-4 capitalize text-slate-700">{d.fileType}</td>
+                  <td className="py-2 pr-4 text-slate-700">
+                    {new Date(d.uploadDate).toLocaleString()}
+                  </td>
+                  <td className="py-2 pr-4">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
+                        DOC_STATUS_META[d.status] ?? "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {d.status}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-4">
+                    <button
+                      type="button"
+                      onClick={() => setPreview(d)}
+                      className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      <Eye className="h-3.5 w-3.5" /> Preview
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+              <div className="truncate text-sm font-medium text-slate-900">{preview.fileName}</div>
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="rounded p-1 text-slate-500 hover:bg-slate-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-[80vh] overflow-auto bg-slate-50 p-3">
+              {preview.fileType === "image" ? (
+                <img src={preview.contentBase64} alt={preview.fileName} className="mx-auto max-h-[75vh]" />
+              ) : (
+                <iframe
+                  title={preview.fileName}
+                  src={preview.contentBase64}
+                  className="h-[75vh] w-full rounded border border-slate-200 bg-white"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

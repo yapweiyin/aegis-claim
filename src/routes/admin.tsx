@@ -9,7 +9,22 @@ import {
   ArrowLeft,
   ClipboardList,
   History,
+  FileText,
+  Image as ImageIcon,
+  Send,
+  CheckCircle2,
+  Inbox,
 } from "lucide-react";
+import {
+  readClaims,
+  writeClaims,
+  updateClaim as updateClaimStore,
+  uid,
+  pushStatusHistory,
+  type StoredClaim,
+  type DocRecord,
+  type DocRequest,
+} from "@/lib/claim-docs";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -37,6 +52,7 @@ const ADMIN_PASSWORD = "admin123";
 const STATUSES = [
   "New",
   "Under Review",
+  "Request Info",
   "Approved",
   "Denied",
   "Paid",
@@ -47,6 +63,7 @@ type Status = (typeof STATUSES)[number];
 const STATUS_META: Record<Status, { emoji: string; cls: string }> = {
   New: { emoji: "🟡", cls: "bg-yellow-100 text-yellow-800 border-yellow-200" },
   "Under Review": { emoji: "🔵", cls: "bg-blue-100 text-blue-800 border-blue-200" },
+  "Request Info": { emoji: "🟠", cls: "bg-orange-100 text-orange-800 border-orange-200" },
   Approved: { emoji: "🟢", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
   Denied: { emoji: "🔴", cls: "bg-red-100 text-red-800 border-red-200" },
   Paid: { emoji: "🟣", cls: "bg-purple-100 text-purple-800 border-purple-200" },
@@ -59,25 +76,7 @@ interface StatusLog {
   note?: string;
 }
 
-interface ClaimEntry {
-  id: string;
-  date: string;
-  claimType: "auto" | "property";
-  result: {
-    decision: "APPROVE" | "ESCALATE" | "DENY";
-    confidence: number;
-    repairCost: number;
-    payout: number;
-    reasoning: string;
-    fraudFlags: string[];
-    nextSteps: string;
-  };
-  formData?: Record<string, string>;
-  fileNames?: string[];
-  status?: Status;
-  notes?: string;
-  statusHistory?: StatusLog[];
-}
+type ClaimEntry = StoredClaim;
 
 function defaultStatusFromDecision(d: ClaimEntry["result"]["decision"]): Status {
   if (d === "APPROVE") return "Approved";
@@ -86,18 +85,11 @@ function defaultStatusFromDecision(d: ClaimEntry["result"]["decision"]): Status 
 }
 
 function readHistory(): ClaimEntry[] {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as ClaimEntry[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return readClaims();
 }
 
 function writeHistory(items: ClaimEntry[]) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
+  writeClaims(items);
 }
 
 function AdminPage() {
@@ -194,6 +186,14 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     [claims, selectedId],
   );
 
+  const pendingRequestsCount = useMemo(
+    () =>
+      claims.filter(
+        (c) => asStatus(c.status, defaultStatusFromDecision(c.result.decision)) === "Request Info",
+      ).length,
+    [claims],
+  );
+
   function updateClaim(updated: ClaimEntry) {
     const next = claims.map((c) => (c.id === updated.id ? updated : c));
     setClaims(next);
@@ -220,6 +220,18 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             >
               <ArrowLeft className="h-4 w-4" /> Claims
             </Link>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("Request Info")}
+              className="inline-flex items-center gap-1.5 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-medium text-orange-700 shadow-sm hover:bg-orange-100"
+            >
+              📋 Pending Requests
+              {pendingRequestsCount > 0 && (
+                <span className="rounded-full bg-orange-200 px-1.5 text-xs font-semibold text-orange-900">
+                  {pendingRequestsCount}
+                </span>
+              )}
+            </button>
             <button
               onClick={onLogout}
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
@@ -284,7 +296,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 </thead>
                 <tbody>
                   {filtered.map((c) => {
-                    const s = c.status ?? defaultStatusFromDecision(c.result.decision);
+                    const s = asStatus(c.status, defaultStatusFromDecision(c.result.decision));
                     const meta = STATUS_META[s];
                     return (
                       <tr key={c.id} className="border-b border-slate-100 last:border-0">
@@ -340,13 +352,18 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 }
 
 const NEXT_STATUSES: Record<Status, Status[]> = {
-  New: ["Under Review"],
-  "Under Review": ["Approved", "Denied"],
+  New: ["Under Review", "Request Info"],
+  "Under Review": ["Request Info", "Approved", "Denied"],
+  "Request Info": ["Under Review", "Denied"],
   Approved: ["Paid", "Closed"],
   Denied: ["Closed"],
   Paid: ["Closed"],
   Closed: [],
 };
+
+function asStatus(s: string | undefined, fallback: Status): Status {
+  return (STATUSES as readonly string[]).includes(s ?? "") ? (s as Status) : fallback;
+}
 
 function ClaimDetail({
   claim,
@@ -357,14 +374,67 @@ function ClaimDetail({
   onClose: () => void;
   onSave: (c: ClaimEntry) => void;
 }) {
-  const currentStatus: Status =
-    claim.status ?? defaultStatusFromDecision(claim.result.decision);
+  const currentStatus: Status = asStatus(claim.status, defaultStatusFromDecision(claim.result.decision));
   const [status, setStatus] = useState<Status>(currentStatus);
   const [notes, setNotes] = useState(claim.notes ?? "");
   const [saved, setSaved] = useState(false);
+  const [requestMsg, setRequestMsg] = useState("");
+  const [previewDoc, setPreviewDoc] = useState<DocRecord | null>(null);
+  const [reviewNotesById, setReviewNotesById] = useState<Record<string, string>>({});
 
   const allowedNext = NEXT_STATUSES[currentStatus];
   const statusOptions = Array.from(new Set([currentStatus, ...allowedNext]));
+
+  function saveClaim(next: ClaimEntry) {
+    onSave(next);
+  }
+
+  function requestDocuments() {
+    const msg = requestMsg.trim();
+    if (!msg) return;
+    const req: DocRequest = {
+      id: uid("req"),
+      message: msg,
+      requestedBy: "admin",
+      requestedDate: new Date().toISOString(),
+    };
+    const next = pushStatusHistory(
+      {
+        ...claim,
+        documentRequests: [...(claim.documentRequests ?? []), req],
+      },
+      "Request Info",
+      `Requested: ${msg}`,
+    );
+    saveClaim(next);
+    setRequestMsg("");
+    setStatus(asStatus(next.status, currentStatus));
+  }
+
+  function markDocReceived(docId: string) {
+    const docs = (claim.documents ?? []).map((d) =>
+      d.id === docId ? { ...d, status: "Received" as const } : d,
+    );
+    const next = pushStatusHistory({ ...claim, documents: docs }, "Under Review", "Document received.");
+    saveClaim(next);
+    setStatus(asStatus(next.status, currentStatus));
+  }
+
+  function markDocReviewed(docId: string) {
+    const note = reviewNotesById[docId] ?? "";
+    const docs = (claim.documents ?? []).map((d) =>
+      d.id === docId
+        ? {
+            ...d,
+            status: "Reviewed" as const,
+            reviewedBy: "admin",
+            reviewDate: new Date().toISOString(),
+            reviewNotes: note || null,
+          }
+        : d,
+    );
+    saveClaim({ ...claim, documents: docs });
+  }
 
   function handleSave() {
     const history = claim.statusHistory ?? [
@@ -525,6 +595,113 @@ function ClaimDetail({
             </div>
           </Card>
 
+          <Card title={<span className="inline-flex items-center gap-2"><Send className="h-4 w-4" /> Request Documents</span>}>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                value={requestMsg}
+                onChange={(e) => setRequestMsg(e.target.value)}
+                placeholder="e.g. Please upload your police report"
+                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-[#2563eb] focus:outline-none focus:ring-1 focus:ring-[#2563eb]"
+              />
+              <button
+                type="button"
+                onClick={requestDocuments}
+                disabled={!requestMsg.trim()}
+                className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Send className="h-4 w-4" /> Request
+              </button>
+            </div>
+            {(claim.documentRequests ?? []).length > 0 && (
+              <ul className="mt-3 space-y-1 text-xs text-slate-600">
+                {(claim.documentRequests ?? []).map((r) => (
+                  <li key={r.id} className="rounded-md border border-slate-100 bg-slate-50 px-2 py-1.5">
+                    <span className="font-medium text-slate-800">“{r.message}”</span>
+                    <span className="ml-2 text-slate-500">
+                      · {new Date(r.requestedDate).toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card title={<span className="inline-flex items-center gap-2"><Inbox className="h-4 w-4" /> Documents ({(claim.documents ?? []).length})</span>}>
+            {(claim.documents ?? []).length === 0 ? (
+              <p className="text-sm text-slate-500">No documents uploaded yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {(claim.documents ?? []).map((d) => {
+                  const isImg = d.contentType.startsWith("image/");
+                  const badgeCls =
+                    d.status === "Reviewed"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : d.status === "Received"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-yellow-100 text-yellow-700";
+                  const emoji = d.status === "Reviewed" ? "🟢" : d.status === "Received" ? "🔵" : "🟡";
+                  return (
+                    <li key={d.id} className="rounded-md border border-slate-200 bg-white p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewDoc(d)}
+                          className="flex flex-1 items-center gap-2 text-left"
+                        >
+                          <span className="text-xl">{isImg ? "🖼️" : "📄"}</span>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium text-slate-900">{d.fileName}</div>
+                            <div className="text-xs text-slate-500">
+                              {(d.fileSize / 1024).toFixed(0)} KB · {new Date(d.uploadDate).toLocaleString()}
+                            </div>
+                          </div>
+                        </button>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badgeCls}`}>
+                          {emoji} {d.status}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                        {d.status === "Pending" && (
+                          <button
+                            type="button"
+                            onClick={() => markDocReceived(d.id)}
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            Mark Received
+                          </button>
+                        )}
+                        {d.status !== "Reviewed" && (
+                          <>
+                            <input
+                              value={reviewNotesById[d.id] ?? d.reviewNotes ?? ""}
+                              onChange={(e) =>
+                                setReviewNotesById((prev) => ({ ...prev, [d.id]: e.target.value }))
+                              }
+                              placeholder="Review notes (optional)"
+                              className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-xs shadow-sm focus:border-[#2563eb] focus:outline-none focus:ring-1 focus:ring-[#2563eb]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => markDocReviewed(d.id)}
+                              className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Mark Reviewed
+                            </button>
+                          </>
+                        )}
+                        {d.reviewNotes && d.status === "Reviewed" && (
+                          <p className="text-xs italic text-slate-600">Note: {d.reviewNotes}</p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
+
+
+
           <Card title={<span className="inline-flex items-center gap-2"><History className="h-4 w-4" /> Status History</span>}>
             {(() => {
               const logs = claim.statusHistory ?? [
@@ -537,7 +714,7 @@ function ClaimDetail({
               return (
                 <ol className="space-y-2 text-sm">
                   {logs.map((l, i) => {
-                    const m = STATUS_META[l.status];
+                    const m = STATUS_META[asStatus(l.status, currentStatus)];
                     return (
                       <li
                         key={i}
@@ -567,6 +744,37 @@ function ClaimDetail({
           </Card>
         </div>
       </div>
+
+      {previewDoc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            className="relative max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg bg-white p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-slate-900">{previewDoc.fileName}</h4>
+              <button
+                onClick={() => setPreviewDoc(null)}
+                className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+            {previewDoc.contentType.startsWith("image/") ? (
+              <img src={previewDoc.contentBase64} alt={previewDoc.fileName} className="mx-auto max-h-[75vh]" />
+            ) : (
+              <iframe
+                src={previewDoc.contentBase64}
+                title={previewDoc.fileName}
+                className="h-[75vh] w-full rounded border border-slate-200"
+              />
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
