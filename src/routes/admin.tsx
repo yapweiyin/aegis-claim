@@ -354,8 +354,7 @@ function ClaimDetail({
   onClose: () => void;
   onSave: (c: ClaimEntry) => void;
 }) {
-  const currentStatus: Status =
-    claim.status ?? defaultStatusFromDecision(claim.result.decision);
+  const currentStatus: Status = asStatus(claim.status, defaultStatusFromDecision(claim.result.decision));
   const [status, setStatus] = useState<Status>(currentStatus);
   const [notes, setNotes] = useState(claim.notes ?? "");
   const [saved, setSaved] = useState(false);
