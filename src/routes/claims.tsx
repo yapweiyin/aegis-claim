@@ -17,8 +17,22 @@ import {
   Trash2,
   ClipboardList,
   Download,
+  Paperclip,
+  Inbox,
 } from "lucide-react";
 import { analyzeClaim } from "@/lib/claims-analysis.functions";
+import {
+  readClaims,
+  writeClaims,
+  updateClaim as updateClaimStore,
+  uid,
+  fileToDataUrl,
+  pushStatusHistory,
+  DOC_ALLOWED_TYPES,
+  DOC_MAX_BYTES,
+  type StoredClaim,
+  type DocRecord,
+} from "@/lib/claim-docs";
 
 
 export const Route = createFileRoute("/claims")({
