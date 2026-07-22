@@ -655,8 +655,19 @@ function ClaimsPage() {
 
             {/* Results */}
             {result && <ResultsPanel result={result} viewedId={viewedId} claimType={claimType} />}
+
+            {viewedClaim && ((viewedClaim.documentRequests?.length ?? 0) > 0 || (viewedClaim.documents?.length ?? 0) > 0) && (
+              <ClaimDocsSection
+                claim={viewedClaim}
+                onUpload={(files) => uploadDocsToClaim(viewedClaim.id, files)}
+                uploading={docUploading}
+                error={docUploadError}
+              />
+            )}
           </section>
         </div>
+
+
 
 
         {/* Claims History */}
