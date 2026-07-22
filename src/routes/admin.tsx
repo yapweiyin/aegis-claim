@@ -213,6 +213,18 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               <ArrowLeft className="h-4 w-4" /> Claims
             </Link>
             <button
+              type="button"
+              onClick={() => setStatusFilter("Request Info")}
+              className="inline-flex items-center gap-1.5 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-medium text-orange-700 shadow-sm hover:bg-orange-100"
+            >
+              📋 Pending Requests
+              {pendingRequestsCount > 0 && (
+                <span className="rounded-full bg-orange-200 px-1.5 text-xs font-semibold text-orange-900">
+                  {pendingRequestsCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={onLogout}
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
             >
