@@ -186,6 +186,14 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     [claims, selectedId],
   );
 
+  const pendingRequestsCount = useMemo(
+    () =>
+      claims.filter(
+        (c) => asStatus(c.status, defaultStatusFromDecision(c.result.decision)) === "Request Info",
+      ).length,
+    [claims],
+  );
+
   function updateClaim(updated: ClaimEntry) {
     const next = claims.map((c) => (c.id === updated.id ? updated : c));
     setClaims(next);
