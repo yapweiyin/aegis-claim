@@ -533,7 +533,7 @@ function ClaimDetail({
               return (
                 <ol className="space-y-2 text-sm">
                   {logs.map((l, i) => {
-                    const m = STATUS_META[l.status];
+                    const m = STATUS_META[asStatus(l.status, currentStatus)];
                     return (
                       <li
                         key={i}
