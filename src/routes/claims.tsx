@@ -182,6 +182,68 @@ function ClaimsPage() {
   };
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const pendingRequests = useMemo(
+    () => history.filter((c) => c.status === "Request Info"),
+    [history],
+  );
+  const viewedClaim = useMemo(
+    () => (viewedId ? history.find((c) => c.id === viewedId) ?? null : null),
+    [history, viewedId],
+  );
+
+  const [docUploadError, setDocUploadError] = useState<string | null>(null);
+  const [docUploading, setDocUploading] = useState(false);
+
+  async function uploadDocsToClaim(claimId: string, list: FileList | null) {
+    if (!list || list.length === 0) return;
+    setDocUploadError(null);
+    setDocUploading(true);
+    try {
+      const newDocs: DocRecord[] = [];
+      for (const f of Array.from(list)) {
+        if (!DOC_ALLOWED_TYPES.includes(f.type)) {
+          setDocUploadError(`Unsupported file type: ${f.name}. Use JPG/PNG/WebP or PDF.`);
+          continue;
+        }
+        if (f.size > 10 * 1024 * 1024) {
+          setDocUploadError(`${f.name} exceeds 10MB.`);
+          continue;
+        }
+        if (f.size > DOC_MAX_BYTES) {
+          setDocUploadError(
+            `${f.name} exceeds 5MB storage limit for browser storage. Please compress the file.`,
+          );
+          continue;
+        }
+        const dataUrl = await fileToDataUrl(f);
+        newDocs.push({
+          id: uid("doc"),
+          claimId,
+          fileName: f.name,
+          fileType: f.type.startsWith("image/") ? "image" : "pdf",
+          contentType: f.type,
+          fileSize: f.size,
+          contentBase64: dataUrl,
+          uploadDate: new Date().toISOString(),
+          status: "Pending",
+        });
+      }
+      if (newDocs.length > 0) {
+        const updated = updateClaimStore(claimId, (c) =>
+          pushStatusHistory(
+            { ...c, documents: [...(c.documents ?? []), ...newDocs] },
+            "Under Review",
+            `User uploaded ${newDocs.length} document(s).`,
+          ),
+        );
+        setHistory(updated);
+      }
+    } finally {
+      setDocUploading(false);
+    }
+  }
+
+
   const previews = useMemo(
     () =>
       files.map((f) => ({
