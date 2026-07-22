@@ -89,14 +89,8 @@ interface ClaimResult {
   nextSteps: string;
 }
 
-interface ClaimHistoryEntry {
-  id: string;
-  date: string; // ISO
-  claimType: ClaimType;
-  result: ClaimResult;
-}
+type ClaimHistoryEntry = StoredClaim;
 
-const HISTORY_KEY = "aegis.claims.history.v1";
 
 function decisionStatus(d: Decision): { label: string; cls: string } {
   if (d === "APPROVE") return { label: "Approved", cls: "bg-emerald-100 text-emerald-700" };
