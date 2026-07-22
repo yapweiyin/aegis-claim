@@ -332,13 +332,18 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 }
 
 const NEXT_STATUSES: Record<Status, Status[]> = {
-  New: ["Under Review"],
-  "Under Review": ["Approved", "Denied"],
+  New: ["Under Review", "Request Info"],
+  "Under Review": ["Request Info", "Approved", "Denied"],
+  "Request Info": ["Under Review", "Denied"],
   Approved: ["Paid", "Closed"],
   Denied: ["Closed"],
   Paid: ["Closed"],
   Closed: [],
 };
+
+function asStatus(s: string | undefined, fallback: Status): Status {
+  return (STATUSES as readonly string[]).includes(s ?? "") ? (s as Status) : fallback;
+}
 
 function ClaimDetail({
   claim,
