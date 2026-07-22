@@ -9,7 +9,22 @@ import {
   ArrowLeft,
   ClipboardList,
   History,
+  FileText,
+  Image as ImageIcon,
+  Send,
+  CheckCircle2,
+  Inbox,
 } from "lucide-react";
+import {
+  readClaims,
+  writeClaims,
+  updateClaim as updateClaimStore,
+  uid,
+  pushStatusHistory,
+  type StoredClaim,
+  type DocRecord,
+  type DocRequest,
+} from "@/lib/claim-docs";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
