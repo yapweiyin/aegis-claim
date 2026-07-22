@@ -436,13 +436,51 @@ function ClaimsPage() {
               AI-powered auto and property claims assessment. Upload evidence and get a decision in seconds.
             </p>
           </div>
-          <Link
-            to="/admin"
-            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            Admin
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {pendingRequests.length > 0 && (
+              <a
+                href="#doc-requests"
+                className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-medium text-orange-700 shadow-sm hover:bg-orange-100"
+              >
+                📋 Document Requests
+                <span className="rounded-full bg-orange-200 px-1.5 text-xs font-semibold text-orange-900">
+                  {pendingRequests.length}
+                </span>
+              </a>
+            )}
+            <Link
+              to="/admin"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Admin
+            </Link>
+          </div>
         </header>
+
+        {pendingRequests.length > 0 && (
+          <div
+            id="doc-requests"
+            className="mb-6 flex flex-col gap-2 rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              📋 <span className="font-semibold">Additional information requested</span> for{" "}
+              {pendingRequests.map((c, i) => (
+                <span key={c.id}>
+                  {i > 0 && ", "}
+                  <button
+                    type="button"
+                    onClick={() => viewHistoryItem(c)}
+                    className="font-semibold underline hover:text-orange-700"
+                  >
+                    Claim #{c.id.slice(-6).toUpperCase()}
+                  </button>
+                </span>
+              ))}
+              . Please scroll to that claim and upload the required documents.
+            </div>
+          </div>
+        )}
+
 
         {/* Toggle */}
         <div className="mb-6 inline-flex w-full max-w-sm rounded-lg border border-slate-200 bg-white p-1 shadow-sm sm:mb-8 sm:w-auto">
