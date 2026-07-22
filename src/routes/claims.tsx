@@ -147,18 +147,18 @@ function ClaimsPage() {
   const [viewedId, setViewedId] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(HISTORY_KEY);
-      if (raw) setHistory(JSON.parse(raw) as ClaimHistoryEntry[]);
-    } catch {
-      /* ignore */
-    }
+    setHistory(readClaims());
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === "aegis.claims.history.v1") setHistory(readClaims());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const saveHistory = (next: ClaimHistoryEntry[]) => {
     setHistory(next);
     try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      writeClaims(next);
     } catch {
       /* ignore */
     }
