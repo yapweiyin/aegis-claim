@@ -724,6 +724,37 @@ function ClaimDetail({
           </Card>
         </div>
       </div>
+
+      {previewDoc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            className="relative max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg bg-white p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-slate-900">{previewDoc.fileName}</h4>
+              <button
+                onClick={() => setPreviewDoc(null)}
+                className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+            {previewDoc.contentType.startsWith("image/") ? (
+              <img src={previewDoc.contentBase64} alt={previewDoc.fileName} className="mx-auto max-h-[75vh]" />
+            ) : (
+              <iframe
+                src={previewDoc.contentBase64}
+                title={previewDoc.fileName}
+                className="h-[75vh] w-full rounded border border-slate-200"
+              />
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
